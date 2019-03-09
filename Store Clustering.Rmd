@@ -1,0 +1,90 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+# import libraries
+library(data.table)
+library(tidyverse)
+library(cluster)
+library(factoextra)
+library(ggplot2)
+
+# read customer table
+store <- fread('D:/Emory/Marketing/Segmentation/Pernalonga/stores_data.csv')
+store <- na.omit(store)
+```
+
+# Use all attributes
+```{r}
+# standardise data
+stores <- scale(store[,2:6])
+row.names(stores) <- store$store_id
+
+# use elbow method to find the optimal number of clusters
+set.seed(123)
+fviz_nbclust(stores, kmeans, method = "wss")
+# the optimal number is 5
+
+#visualise
+k1 <- kmeans(stores, centers = 5, nstart = 25, iter.max = 20)
+fviz_cluster(k1, data = stores)
+
+# within clusters sum of squares devided by total sum of squares: 46%
+sum(k1$withinss) / k1$totss
+
+# add cluster number to the original data
+store1 <- store[,2:6]
+store1$cluster <- k1$cluster
+
+# summarise means by clusters
+mean_segment <- store1[,lapply(.SD,mean),by=cluster,.SDcols=names(store1[1:6])]
+```
+
+# Only use total_sales, product_types (Final Choice)
+```{r}
+# standardise data
+stores <- scale(store[,4:5])
+row.names(stores) <- store$store_id
+
+# use elbow method to find the optimal number of clusters
+set.seed(123)
+fviz_nbclust(stores, kmeans, method = "wss")
+# the optimal number is 4
+
+#visualise
+k2 <- kmeans(stores, centers = 4, nstart = 25, iter.max = 20)
+fviz_cluster(k2, data = stores)
+
+# within clusters sum of squares devided by total sum of squares: 18%
+sum(k2$withinss) / k2$totss
+
+# add cluster number to the original data
+store1 <- store[,2:6]
+store1$cluster2 <- k2$cluster
+
+# summarize means by clusters
+store1_mean_cluster <- store1[,lapply(.SD,mean),by=cluster2,.SDcols=names(store1[1:5])]
+store1_sd_cluster <- store1[,lapply(.SD,sd),by=cluster2,.SDcols=names(store1[1:5])]
+
+# add cluster sizes
+setorder(store1_mean_cluster, cluster2)
+setorder(store1_sd_cluster, cluster2)
+store1_mean_cluster$size <- k2$size
+
+# write out csv files
+write.csv(store1_mean_cluster,"store_cluster_mean_stat.csv", row.names=FALSE)
+write.csv(store1_sd_cluster,"store_cluster_sd_stat.csv", row.names=FALSE)
+
+# plot box plot
+p1 <- ggplot(store1, aes(x=cluster2,y=total_sales,group=cluster2)) + geom_boxplot()
+p1
+
+p2 <- ggplot(store1, aes(x=cluster2,y=product_types,group=cluster2)) + geom_boxplot()
+p2
+```
