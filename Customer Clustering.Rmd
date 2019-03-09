@@ -1,0 +1,116 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+# import libraries
+library(data.table)
+library(tidyverse)
+library(cluster)
+library(factoextra)
+library(ggplot2)
+
+# read customer table
+customer <- fread('D:/Emory/Marketing/Segmentation/Pernalonga/customers_data.csv')
+customer <- na.omit(customer)
+```
+
+# Use month / week / discount attributes
+```{r}
+# standardise data
+customers <- scale(customer[,2:35])
+row.names(customers) <- customer$cust_id
+
+# use elbow method to find the optimal number of clusters
+set.seed(123)
+fviz_nbclust(customers, kmeans, method = "wss")
+# the optimal number is 3
+
+#visualize
+k1 <- kmeans(customers, centers = 3, nstart = 25, iter.max = 20)
+fviz_cluster(k1, data = customers)
+
+# within clusters sum of squares devided by total sum of squares: 70%
+sum(k1$withinss) / k1$totss
+
+# add cluster number to the original data
+customer1 <- customer[,2:37]
+customer1$cluster <- k1$cluster
+
+# summarise means by clusters
+mean_segment <- customer1[,lapply(.SD,mean),by=cluster,.SDcols=names(customer1[1:36])]
+
+```
+
+# Use discount attributes only (Final Choice)
+```{r}
+customer[,weekend := (customer$Saturday_spending+customer$Sunday_spending)/customer$total_spending]
+
+# only use the last 3 columns (discount_freq, discount_rate)
+discount <- scale(customer[,c(33,35)])
+row.names(discount) <- customer$cust_id
+
+# optimal number of clusters: 4, wss: 8000
+set.seed(123)
+fviz_nbclust(discount, kmeans, method = "wss")
+
+# visualize
+k2 <-kmeans(discount, centers = 3, nstart = 25)
+fviz_cluster(k2, data = discount)
+
+# within clusters sum of squares devided by total sum of squares: 23%
+sum(k2$withinss) / k2$totss
+
+# summarise means by clusters
+customer1 <- customer[,33:38]
+customer1$customer_cluster <- k2$cluster
+
+customer1_mean_cluster <-customer1[,lapply(.SD,mean),by=customer_cluster,
+                                   .SDcols=names(customer1[1:6])]
+customer1_sd_cluster <-customer1[,lapply(.SD,sd),by=customer_cluster,
+                                 .SDcols=names(customer1[1:6])]
+# add cluster sizes
+setorder(customer1_mean_cluster, customer_cluster)
+setorder(customer1_sd_cluster, customer_cluster)
+customer1_mean_cluster$size <- k2$size
+
+# write out csv files
+write.csv(customer1_mean_cluster,"customer_cluster_mean_stat.csv", row.names=FALSE)
+write.csv(customer1_sd_cluster,"customer_cluster_sd_stat.csv", row.names=FALSE)
+
+# plot box plot
+p1 <- ggplot(customer1, aes(x=customer_cluster,y=discount_freq,group=customer_cluster)) + geom_boxplot()
+p1
+
+p2 <- ggplot(customer1, aes(x=customer_cluster,y=discount_rate,group=customer_cluster)) + geom_boxplot()
+p2
+
+```
+
+# Use discount and total amount/frequency attributes
+```{r}
+cust <- scale(customer[,33:37])
+row.names(cust) <- customer$cust_id
+
+# optimal number of clusters: 4
+set.seed(123)
+fviz_nbclust(cust, kmeans, method = "wss")
+
+# visualize
+gc()
+k3 <- kmeans(cust, centers = 4, nstart = 25)
+fviz_cluster(k3, data = cust)
+
+# within clusters sum of squares devided by total sum of squares: 52%
+sum(k3$withinss) / k3$totss
+
+# summarise means by clusters
+customer1$discount_total_cluster <- k3$cluster
+mean_segment_discount_total <- customer1[,lapply(.SD,mean),by=discount_total_cluster,.SDcols=names(customer1[1:38])]
+```
+
