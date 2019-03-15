@@ -2,9 +2,9 @@ if(!require("data.table")) { install.packages("data.table"); require("data.table
 if(!require("plyr")) { install.packages("plyr"); require("plyr") }
 if(!require("tidyverse")) { install.packages("tidyverse"); require("tidyverse") }
 if(!require("factoextra")) { install.packages("factoextra"); require("factoextra") }
+if(!require("dplyr")) { install.packages("dplyr"); require("dplyr") }
 
-
-product <- fread("C:/Users/Guest User/Desktop/product_table.csv")
+product<- fread("C:/Users/Guest User/Desktop/product_table.csv")
 transaction <- fread("C:/Users/Guest User/Desktop/transaction_table.csv")
 transaction$weekday<- weekdays(as.Date(transaction$tran_dt))
 transaction$month<- month(as.Date(transaction$tran_dt))
