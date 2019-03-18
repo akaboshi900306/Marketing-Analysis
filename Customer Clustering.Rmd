@@ -20,7 +20,7 @@ customer <- fread('D:/Emory/Marketing/Segmentation/Pernalonga/customers_data.csv
 customer <- na.omit(customer)
 ```
 
-# Use month / week / discount attributes
+# Use month / week / discount attributes 
 ```{r}
 # standardise data
 customers <- scale(customer[,2:35])
@@ -113,4 +113,5 @@ sum(k3$withinss) / k3$totss
 customer1$discount_total_cluster <- k3$cluster
 mean_segment_discount_total <- customer1[,lapply(.SD,mean),by=discount_total_cluster,.SDcols=names(customer1[1:38])]
 ```
+# find the best k by using the elbow method in knn
 
